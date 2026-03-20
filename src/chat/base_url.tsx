@@ -1,0 +1,1 @@
+export const BASE_URL = 'wss://chatbot.avya.lk:443/ws';
