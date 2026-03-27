@@ -17,7 +17,7 @@ A customizable floating chatbot widget for React Native apps. Similar to web cha
 ## Installation
 
 ```sh
-npm install react-native-chatbot
+npm install react-native-chatbot-support
 ```
 
 ## Usage
@@ -27,13 +27,13 @@ Wrap your app content with `ChatBotWidget`:
 ```tsx
 import React from "react";
 import { View, Text } from "react-native";
-import { ChatBotWidget, ChatConfig } from "react-native-chatbot";
+import { ChatBotWidget, ChatConfig } from "react-native-chatbot-support";
 
 const config: ChatConfig = {
   title: "Support Bot",
   themeColor: "#007BFF",
   initialMessage: "Hi! How can I help you today?",
-  profilePicUrl: "https://i.pravatar.cc/40",
+  profilePicUrl: "https://chat.avya.lk/images/logo.webp",
   apiKey: "your-api-key",
 };
 
