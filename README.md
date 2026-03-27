@@ -14,6 +14,12 @@ A customizable floating chatbot widget for React Native apps. Similar to web cha
 - Typing Indicator - Animated typing indicator for bot responses
 - Responsive - Works on phones and tablets
 
+## 📸 Preview
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Avya-Technologies/react-native-chatbot-support/blob/main/assets/demo.gif" alt="chatbot-demo" width="320"/>
+</div>
+
 ## Installation
 
 ```sh
