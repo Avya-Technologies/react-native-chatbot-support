@@ -17,7 +17,7 @@ A customizable floating chatbot widget for React Native apps. Similar to web cha
 ## 📸 Preview
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Avya-Technologies/react-native-chatbot-support/blob/main/assets/demo.gif" alt="chatbot-demo" width="320"/>
+  <img src="https://github.com/Avya-Technologies/react-native-chatbot-support/blob/main/assets/demo.gif" alt="chatbot-demo" width="320"/>
 </div>
 
 ## Installation
