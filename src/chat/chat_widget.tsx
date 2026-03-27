@@ -4,6 +4,7 @@ import {
   Easing,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -29,12 +30,10 @@ type ChatConfig = {
   themeColor?: string;
   initialMessage?: string;
   inputPlaceholder?: string;
-
   bottomOffset?: number;
   rightOffset?: number;
   buttonSize?: number;
   windowBorderRadius?: number;
-
   profilePicUrl?: string | null;
   onSendMessage?: (text: string) => Promise<string>;
   apiKey?: string;
@@ -75,11 +74,9 @@ function mixHexColor(baseHex: string, mixHex: string, amount: number) {
 
   const a = hexToRgb(baseHex);
   const b = hexToRgb(mixHex);
-
   const r = Math.round(a.r + (b.r - a.r) * amount);
   const g = Math.round(a.g + (b.g - a.g) * amount);
   const bb = Math.round(a.b + (b.b - a.b) * amount);
-
   return rgbToHex(r, g, bb);
 }
 
@@ -93,16 +90,8 @@ function TypingDots() {
       Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(v, {
-            toValue: 1,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.timing(v, {
-            toValue: 0.3,
-            duration: 250,
-            useNativeDriver: true,
-          }),
+          Animated.timing(v, { toValue: 1, duration: 250, useNativeDriver: true }),
+          Animated.timing(v, { toValue: 0.3, duration: 250, useNativeDriver: true }),
           Animated.delay(150),
         ]),
       );
@@ -110,16 +99,9 @@ function TypingDots() {
     const l1 = loop(a1, 0);
     const l2 = loop(a2, 120);
     const l3 = loop(a3, 240);
+    l1.start(); l2.start(); l3.start();
 
-    l1.start();
-    l2.start();
-    l3.start();
-
-    return () => {
-      l1.stop();
-      l2.stop();
-      l3.stop();
-    };
+    return () => { l1.stop(); l2.stop(); l3.stop(); };
   }, [a1, a2, a3]);
 
   return (
@@ -140,9 +122,10 @@ export function ChatBotWidget(props: {
   const merged = { ...defaultConfig, ...props.config };
   const config: ChatConfig = merged;
 
-  const { width: screenW, height: screenH } = useWindowDimensions();
+  const { width: windowW, height: windowH } = useWindowDimensions();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [text, setText] = useState("");
   const textRef = useRef("");
@@ -160,36 +143,33 @@ export function ChatBotWidget(props: {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
-  const headerColor = useMemo(
-    () => mixHexColor(config.themeColor!, "#000000", 0.3),
-    [config.themeColor],
-  );
-  const bodyColor = useMemo(
-    () => mixHexColor(config.themeColor!, "#FFFFFF", 0.88),
-    [config.themeColor],
-  );
-  const userMsgColor = useMemo(
-    () => mixHexColor(config.themeColor!, "#000000", 0.3),
-    [config.themeColor],
-  );
-  const botMsgColor = useMemo(
-    () => mixHexColor(config.themeColor!, "#000000", 0.1),
-    [config.themeColor],
-  );
-  const footerColor = useMemo(
-    () => mixHexColor(config.themeColor!, "#FFFFFF", 0.9),
-    [config.themeColor],
-  );
+  const headerColor = useMemo(() => mixHexColor(config.themeColor!, "#000000", 0.3), [config.themeColor]);
+  const bodyColor   = useMemo(() => mixHexColor(config.themeColor!, "#FFFFFF", 0.88), [config.themeColor]);
+  const footerColor = useMemo(() => mixHexColor(config.themeColor!, "#FFFFFF", 0.9), [config.themeColor]);
 
-  const isTabletLike = Math.min(screenW, screenH) >= 600;
-  const windowWidth = isTabletLike ? screenW * 0.6 : screenW * 0.9;
-  const windowHeight = isTabletLike ? screenH * 0.55 : screenH * 0.6;
+  const isTabletLike = Math.min(windowW, windowH) >= 600;
+  const windowWidth  = isTabletLike ? windowW * 0.6 : windowW * 0.9;
+  const windowHeight = isTabletLike ? windowH * 0.55 : windowH * 0.6;
+  const keyboardVisible   = keyboardHeight > 0;
+  const effectiveKeyboard = Platform.OS === "ios" ? keyboardHeight : 0;
+  const fabStackOffset    = keyboardVisible
+    ? 12
+    : (config.bottomOffset ?? 24) + (config.buttonSize ?? 56) + 24;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   const openChat = () => {
     setIsOpen(true);
     Animated.timing(scaleAnim, {
-      toValue: 1,
-      duration: 200,
+      toValue: 1, duration: 200,
       easing: Easing.out(Easing.back(1.2)),
       useNativeDriver: true,
     }).start();
@@ -197,36 +177,23 @@ export function ChatBotWidget(props: {
 
   const closeChat = () => {
     Animated.timing(scaleAnim, {
-      toValue: 0,
-      duration: 160,
+      toValue: 0, duration: 160,
       easing: Easing.out(Easing.quad),
       useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) setIsOpen(false);
-    });
+    }).start(({ finished }) => { if (finished) setIsOpen(false); });
   };
 
-  const toggleChat = () => {
-    if (isOpen) closeChat();
-    else openChat();
-  };
+  const toggleChat = () => { if (isOpen) closeChat(); else openChat(); };
 
   const scrollToBottom = () => {
-    requestAnimationFrame(() => {
-      listRef.current?.scrollToEnd({ animated: true });
-    });
+    requestAnimationFrame(() => { listRef.current?.scrollToEnd({ animated: true }); });
   };
 
   const sendMessage = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    const userMsg: ChatMessage = {
-      id: String(Date.now()) + "-u",
-      text: trimmed,
-      sender: "user",
-    };
-
+    const userMsg: ChatMessage = { id: String(Date.now()) + "-u", text: trimmed, sender: "user" };
     setMessages((prev) => [...prev, userMsg]);
     setText("");
     textRef.current = "";
@@ -238,26 +205,17 @@ export function ChatBotWidget(props: {
       const handler =
         config.onSendMessage ??
         (async (t: string) => {
-          if (!serviceRef.current)
-            serviceRef.current = new ChatService(config as any);
+          if (!serviceRef.current) serviceRef.current = new ChatService(config as any);
           return serviceRef.current.sendMessage(t);
         });
 
       const response = await handler(trimmed);
-      const botMsg: ChatMessage = {
-        id: String(Date.now()) + "-b",
-        text: response,
-        sender: "bot",
-      };
+      const botMsg: ChatMessage = { id: String(Date.now()) + "-b", text: response, sender: "bot" };
       setMessages((prev) => [...prev, botMsg]);
-    } catch (e) {
+    } catch {
       setMessages((prev) => [
         ...prev,
-        {
-          id: String(Date.now()) + "-e",
-          text: "Something went wrong.",
-          sender: "bot",
-        },
+        { id: String(Date.now()) + "-e", text: "Something went wrong.", sender: "bot" },
       ]);
     } finally {
       setIsTyping(false);
@@ -265,7 +223,7 @@ export function ChatBotWidget(props: {
     }
   };
 
-  const bubbleMaxW = windowWidth * 0.75;
+  const bubbleMaxW = windowWidth * 0.82;
 
   return (
     <View style={{ flex: 1 }}>
@@ -283,10 +241,7 @@ export function ChatBotWidget(props: {
               style={[
                 styles.windowAnchor,
                 {
-                  bottom:
-                    (config.bottomOffset ?? 24) +
-                    (config.buttonSize ?? 56) +
-                    24,
+                  bottom: fabStackOffset + effectiveKeyboard,
                   right: config.rightOffset ?? 16,
                   left: 12,
                 },
@@ -297,12 +252,16 @@ export function ChatBotWidget(props: {
                   styles.window,
                   {
                     width: windowWidth,
-                    height: windowHeight,
+                    height: Math.min(
+                      windowHeight,
+                      Math.max(240, windowH - (fabStackOffset + effectiveKeyboard) - 12),
+                    ),
                     borderRadius: config.windowBorderRadius ?? 16,
                     transform: [{ scale: scaleAnim }],
                   },
                 ]}
               >
+                {/* ── Header ── */}
                 <View
                   style={[
                     styles.header,
@@ -318,33 +277,32 @@ export function ChatBotWidget(props: {
                       <Image
                         source={{ uri: config.profilePicUrl }}
                         style={styles.avatarImg}
+                        resizeMode="contain"
                       />
                     ) : (
-                      <Text style={styles.avatarIcon}>🤖</Text>
+                      <Text allowFontScaling={false} style={styles.avatarIcon}>🤖</Text>
                     )}
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle}>{config.title}</Text>
-                    <Text style={styles.headerSub}>
+                    <Text allowFontScaling={false} style={styles.headerTitle}>{config.title}</Text>
+                    <Text allowFontScaling={false} style={styles.headerSub}>
                       {isTyping ? "typing..." : "online"}
                     </Text>
                   </View>
 
                   <Pressable onPress={closeChat} hitSlop={10}>
-                    <Text style={styles.close}>✕</Text>
+                    <Text allowFontScaling={false} style={styles.close}>✕</Text>
                   </Pressable>
                 </View>
 
+                {/* ── Body ── */}
                 <View style={[styles.body, { backgroundColor: bodyColor }]}>
                   <FlatList<ChatMessage>
                     ref={listRef}
                     data={
                       isTyping
-                        ? [
-                            ...messages,
-                            { id: "typing", text: "", sender: "bot" as Sender },
-                          ]
+                        ? [...messages, { id: "typing", text: "", sender: "bot" as Sender }]
                         : messages
                     }
                     keyExtractor={(m) => m.id}
@@ -353,19 +311,8 @@ export function ChatBotWidget(props: {
                     renderItem={({ item }) => {
                       if (item.id === "typing") {
                         return (
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              justifyContent: "flex-start",
-                              marginBottom: 10,
-                            }}
-                          >
-                            <View
-                              style={[
-                                styles.typingWrap,
-                                { backgroundColor: botMsgColor },
-                              ]}
-                            >
+                          <View style={{ flexDirection: "row", justifyContent: "flex-start", marginBottom: 10 }}>
+                            <View style={[styles.bubble, styles.botBubble]}>
                               <TypingDots />
                             </View>
                           </View>
@@ -373,7 +320,6 @@ export function ChatBotWidget(props: {
                       }
 
                       const isUser = item.sender === "user";
-                      const bg = isUser ? userMsgColor : botMsgColor;
 
                       return (
                         <View
@@ -386,13 +332,24 @@ export function ChatBotWidget(props: {
                           <View
                             style={[
                               styles.bubble,
+                              isUser ? styles.userBubble : styles.botBubble,
                               {
-                                backgroundColor: bg,
                                 maxWidth: bubbleMaxW,
+                                backgroundColor: isUser
+                                  ? (config.themeColor ?? "#1976D2")
+                                  : "#FFFFFF",
                               },
                             ]}
                           >
-                            <Text style={styles.bubbleText}>{item.text}</Text>
+                            <Text
+                              allowFontScaling={false}
+                              style={[
+                                styles.bubbleText,
+                                { color: isUser ? "#FFFFFF" : "#1a1a1a" },
+                              ]}
+                            >
+                              {item.text}
+                            </Text>
                           </View>
                         </View>
                       );
@@ -401,6 +358,7 @@ export function ChatBotWidget(props: {
                   />
                 </View>
 
+                {/* ── Footer ── */}
                 <View
                   style={[
                     styles.footer,
@@ -415,14 +373,12 @@ export function ChatBotWidget(props: {
                     <TextInput
                       ref={inputRef}
                       value={text}
-                      onChangeText={(v) => {
-                        textRef.current = v;
-                        setText(v);
-                      }}
+                      onChangeText={(v) => { textRef.current = v; setText(v); }}
                       placeholder={config.inputPlaceholder}
-                      placeholderTextColor="#666"
+                      placeholderTextColor="#999"
                       style={styles.input}
                       multiline
+                      allowFontScaling={false}
                       returnKeyType="send"
                       onSubmitEditing={sendMessage}
                       blurOnSubmit={false}
@@ -431,12 +387,9 @@ export function ChatBotWidget(props: {
 
                   <Pressable
                     onPress={sendMessage}
-                    style={[
-                      styles.sendBtn,
-                      { backgroundColor: config.themeColor ?? "#1976D2" },
-                    ]}
+                    style={[styles.sendBtn, { backgroundColor: config.themeColor ?? "#1976D2" }]}
                   >
-                    <Text style={styles.sendIcon}>➤</Text>
+                    <Text allowFontScaling={false} style={styles.sendIcon}>➤</Text>
                   </Pressable>
                 </View>
               </Animated.View>
@@ -445,30 +398,38 @@ export function ChatBotWidget(props: {
         </KeyboardAvoidingView>
       )}
 
-      <View
-        pointerEvents="box-none"
-        style={[
-          styles.fabWrap,
-          {
-            bottom: config.bottomOffset ?? 24,
-            right: config.rightOffset ?? 16,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={toggleChat}
-          style={[
-            styles.fab,
-            {
-              width: config.buttonSize ?? 56,
-              height: config.buttonSize ?? 56,
-              backgroundColor: config.themeColor ?? "#1976D2",
-            },
-          ]}
+      {keyboardHeight === 0 && (
+        <View
+          pointerEvents="box-none"
+          style={[styles.fabWrap, { bottom: config.bottomOffset ?? 24, right: config.rightOffset ?? 16 }]}
         >
-          <Text style={styles.fabIcon}>{isOpen ? "✕" : "💬"}</Text>
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={toggleChat}
+            style={[
+              styles.fab,
+              {
+                width: config.buttonSize ?? 56,
+                height: config.buttonSize ?? 56,
+                backgroundColor: config.profilePicUrl ? "transparent" : config.themeColor ?? "#1976D2",
+              },
+            ]}
+          >
+            {config.profilePicUrl ? (
+              <View style={[styles.fabAvatar, { width: config.buttonSize ?? 56, height: config.buttonSize ?? 56 }]}>
+                <Image
+                  source={{ uri: config.profilePicUrl }}
+                  style={[styles.fabAvatarImg, { width: config.buttonSize ?? 56, height: config.buttonSize ?? 56 }]}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <Text allowFontScaling={false} style={styles.fabIcon}>
+                {isOpen ? "✕" : "💬"}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -486,6 +447,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   fabIcon: { color: "#fff", fontSize: 22 },
+  fabAvatar: { borderRadius: 999, overflow: "hidden", backgroundColor: "#fff" },
+  fabAvatarImg: { borderRadius: 999 },
 
   windowAnchor: {
     position: "absolute",
@@ -509,37 +472,44 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.24)",
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  avatarImg: { width: 40, height: 40 },
-  avatarIcon: { color: "#fff", fontSize: 18 },
-  headerTitle: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  headerSub: { color: "rgba(255,255,255,0.8)", marginTop: 2, fontSize: 13 },
-  close: { color: "#fff", fontSize: 22, paddingHorizontal: 6 },
+  avatarImg:   { width: 40, height: 40, borderRadius: 999 },
+  avatarIcon:  { color: "#fff", fontSize: 18 },
+  headerTitle: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  headerSub:   { color: "rgba(255,255,255,0.8)", marginTop: 2, fontSize: 12 },
+  close:       { color: "#fff", fontSize: 22, paddingHorizontal: 6 },
 
   body: { flex: 1 },
 
   bubble: {
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 12,
-    alignSelf: "flex-start",
+    borderRadius: 16,
+    elevation: 1,
+  },
+  userBubble: {
+    borderBottomRightRadius: 4,
+  },
+  botBubble: {
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
   bubbleText: {
-    color: "#fff",
+    fontWeight: "400",
     fontSize: 14,
-    lineHeight: 20,
-    flexShrink: 1,
+    lineHeight: 21,
   },
 
   typingWrap: {
-    marginBottom: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderBottomLeftRadius: 4,
   },
 
   footer: {
@@ -553,10 +523,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: Platform.OS === "ios" ? 10 : 8,
     borderWidth: 1,
     borderColor: "#ddd",
     color: "#111",
+    fontSize: 14,
+    fontWeight: "400",
   },
   sendBtn: {
     width: 40,
@@ -571,6 +543,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#1976D2",
   },
 });

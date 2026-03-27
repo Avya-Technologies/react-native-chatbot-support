@@ -5,7 +5,7 @@ const chatConfig = {
   title: "Support Bot",
   themeColor: "#007BFF",
   initialMessage: "Hi! How can I help you today?",
-  profilePicUrl: "https://i.pravatar.cc/40",
+  profilePicUrl: "https://chat.avya.lk/images/logo.webp",
   apiKey:
     "sk-avya-b61db99e-465c-4996-99d5-85e2c77c475b-cb-ad081b96-7997-4a8b-bd24-a28b4cdf9cbc",
 };
