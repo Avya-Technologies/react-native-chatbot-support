@@ -69,12 +69,7 @@ themeColor | string | `#007BFF` | Primary color for the chat widget
 initialMessage | string | `Hi! How can I help you?` | Bot's greeting message
 inputPlaceholder | string | `Type a message...` | Placeholder text in input field
 apiKey | string | `""` | API key for backend authentication
-apiEndpoint | string | `wss://chatbot.avya.lk:443/ws` | Endpoint URL for API or WebSocket
 profilePicUrl | string | `null` | URL for bot's profile picture
-bottomOffset | number | `24` | Distance from bottom for floating button
-rightOffset | number | `16` | Distance from right for floating button
-buttonSize | number | `56` | Size of the floating button
-windowBorderRadius | number | `16` | Border radius of the chat window
 
 ## Architecture
 
