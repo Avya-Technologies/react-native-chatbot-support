@@ -1,6 +1,6 @@
 {
   "name": "react-native-chatbot-support",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A customizable floating chatbot widget for React Native apps. Similar to web chat widgets, this package adds a floating chat button to your app that opens a beautiful chat interface with AI integration support.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
